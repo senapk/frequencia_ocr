@@ -21,4 +21,6 @@ gray = cv2.GaussianBlur(gray, (5, 5), 0)
 
 
 
+
+
 cv2.imwrite("saida.jpg", gray)
