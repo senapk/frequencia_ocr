@@ -8,7 +8,7 @@ HEIGHT = 1400
 WIDTH = 1000
 
 cells_folder = "cells"
-
+PREVIEW_SIZE = 30
 model_path = "raw/digits_knn.xml"
 
 def print_image(image_path: str, end="\n"):
@@ -120,8 +120,8 @@ def cut_info(img) -> list[list[str]]:
     return paths
 
 def preview_square(img):
-    view_size = 50
-    temp_view = cv2.resize(img, (view_size, view_size), interpolation=cv2.INTER_AREA)
+
+    temp_view = cv2.resize(img, (PREVIEW_SIZE, PREVIEW_SIZE), interpolation=cv2.INTER_AREA)
     print_raw_img(temp_view, "")
 
 def auto_cut_borders(img):
@@ -186,7 +186,10 @@ if __name__ == "__main__":
     parser.add_argument("--align", '-a', default="alinhada.jpg", help="Caminho para salvar a imagem alinhada.")
     parser.add_argument("--filter", '-f', default="filtrada.jpg", help="Caminho para salvar a imagem filtrada.")
     parser.add_argument("--qtd", type=int, default=0, help="Quantidade de linhas a processar (0 = todas).")
+    parser.add_argument("--preview", '-p', type=int, default=30, help="Tamanho do preview das células.")
     args = parser.parse_args()
+
+    PREVIEW_SIZE = args.preview
 
     img = alinhar(args.input, args.align)
     # img = filtrar(img, args.filter)
