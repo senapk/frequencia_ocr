@@ -11,16 +11,20 @@ pip install opencv-python numpy
 ## Uso
 
 ```bash
-uv run process.py
+python process.py
 ```
 
+## Qual termina usar?
+
+- Se você usar o kitty ou o wezterm, as imagens serão exibidas diretamente no terminal.
+- Se você usar outro terminal, as imagens serão salvas na pasta `cells/` para revisão manual.
 
 ## Todo
 
-- [ ] Carregar a imagem
-- [ ] Processar a imagem para melhor visibilidade
-- [ ] Corrigir o alinhamento se foto torta ou paisagem
-- [ ] Cortar as imagens das entradas individuais (20 matriculas e 20 nomes)
+- [x] Carregar a imagem
+- [x] Processar a imagem para melhor visibilidade
+- [x] Corrigir o alinhamento se foto torta ou paisagem
+- [x] Cortar as imagens das entradas individuais (20 matriculas e 20 nomes)
 - [ ] Testar o reconhecimento com diferentes tipos de filtros
 - [ ] Fazer o código de busca e verificação dos match matrícula nome por proximidade
 - [ ] Guardar as imagens dos dados não reconhecidos para revisão manual
