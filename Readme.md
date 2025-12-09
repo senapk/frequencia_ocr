@@ -11,7 +11,10 @@ pip install opencv-python numpy
 ## Uso
 
 ```bash
-python process.py
+# qtd para quantos elementos mostrar
+# preview para o tamanho do preview das células (padrão 30)
+# quanto maior a letra do terminal, maior pode ficar o preview
+python process.py --qtd 10 --preview 40
 ```
 
 ## Qual termina usar?
