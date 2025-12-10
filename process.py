@@ -236,7 +236,7 @@ def predict_digit(img_path: str, model: cv2.ml_KNearest) -> int:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Alinhar imagem usando marcadores ArUco.")
-    parser.add_argument("--input", '-i', default="folha.jpg", help="Caminho para a imagem de entrada.")
+    parser.add_argument("--input", '-i', default="folha-00.png", help="Caminho para a imagem de entrada.")
     parser.add_argument("--align", '-a', default="alinhada.jpg", help="Caminho para salvar a imagem alinhada.")
     parser.add_argument("--filter", '-f', default="filtrada.jpg", help="Caminho para salvar a imagem filtrada.")
     parser.add_argument("--qtd", type=int, default=0, help="Quantidade de linhas a processar (0 = todas).")

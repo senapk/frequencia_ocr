@@ -13,13 +13,13 @@ pip install opencv-python numpy opencv-stubs
 ```bash
 # qtd para quantos elementos mostrar
 # preview para o tamanho do preview das células (padrão 30)
-# quanto maior a letra do terminal, maior pode ficar o preview
+# quanto maior a letra do terminal, maior pode ficar o preview, se ficar grande demais, vai quebrar a linha estranho
 python process.py --qtd 10 --preview 40
 ```
 
 ## Qual termina usar?
 
-- Se você usar o kitty ou o wezterm, as imagens serão exibidas diretamente no terminal.
+- Se você usar o wezterm, as imagens serão exibidas diretamente no terminal.
 - Se você usar outro terminal, as imagens serão salvas na pasta `cells/` para revisão manual.
 
 ## Todo
