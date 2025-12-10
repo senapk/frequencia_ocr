@@ -1,26 +1,32 @@
 import cv2
 import numpy as np
 import argparse
-import subprocess
 import base64
+import tempfile
+from numpy.typing import NDArray
+
 
 HEIGHT = 1400
 WIDTH = 1000
 
 cells_folder = "cells"
-PREVIEW_SIZE = 30
+preview_size = 30
+border_cut = 2
+border_fill_limit = 0.2
 model_path = "raw/digits_knn.xml"
 
-def print_image(image_path: str, end="\n"):
+
+def print_image(image_path: str, end: str="\n"):
     # ler e converter para base64 (string sem quebras)
     with open(image_path, "rb") as f:
         data = base64.b64encode(f.read()).decode("utf-8")
     # imprimir no terminal (WezTerm/Kitty)
     print(f"\033_Ga=T,f=100;{data}\033\\", end=end)
 
-def print_raw_img(img, end="\n"):
-    cv2.imwrite("temp_cell.jpg", img)
-    print_image("temp_cell.jpg", end=end)
+def print_raw_img(img: NDArray[np.uint8], end: str="\n"):
+    temp_jpg_file = tempfile.gettempdir() + "/temp_cell.jpg"
+    cv2.imwrite(temp_jpg_file, img)
+    print_image(temp_jpg_file, end=end)
 
 def green(text: str) -> str:
     return f"\033[92m{text}\033[0m"
@@ -31,12 +37,12 @@ def alinhar(input: str, output: str):
 
     # Configurar ArUco
     aruco = cv2.aruco
-    dict_ = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
+    dict_ = aruco.getPredefinedDictionary(aruco.DICT_4X4_50) # type: ignore
     params = aruco.DetectorParameters()
-    detector = aruco.ArucoDetector(dict_, params)
+    detector = aruco.ArucoDetector(dict_, params) # type: ignore
 
     # Detectar marcadores
-    corners, ids, _ = detector.detectMarkers(img)
+    corners, ids, _ = detector.detectMarkers(img) # type: ignore
 
     if ids is None or len(ids) < 4:
         raise Exception("Nem todos os 4 ArUcos foram detectados.")
@@ -64,36 +70,43 @@ def alinhar(input: str, output: str):
     dst = np.float32([ [0, 0], [W, 0], [W, H], [0, H] ]) # type: ignore
 
     # Matriz de transformação e warp
-    M = cv2.getPerspectiveTransform(pts, dst)
-    corrigida = cv2.warpPerspective(img, M, (W, H))
+    M = cv2.getPerspectiveTransform(pts, dst) # type: ignore
+    corrigida = cv2.warpPerspective(img, M, (W, H)) # type: ignore
 
     cv2.imwrite(output, corrigida)
     print("Imagem alinhada salva em", green(output))
     return corrigida
 
-def filtrar(img, path: str):
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+def filtrar(img: NDArray[np.uint8], path: str):
+    # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # aumentar contraste
-    gray = cv2.equalizeHist(gray)
+    # img = cv2.equalizeHist(img)
 
     # remover ruído
-    gray = cv2.GaussianBlur(gray, (5, 5), 0)
+    # img = cv2.GaussianBlur(img, (5, 5), 0)
+    
+    # binarização otsu (scanner de documentos)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    _, gray = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    img = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
 
     # fazer contornos
     # gray = cv2.Canny(gray, 50, 150, apertureSize=3)
 
-    cv2.imwrite(path, gray)
+    cv2.imwrite(path, img)
     print("Imagem filtrada salva em", green(path))
-    return gray
+    return img
 
-def cut_info(img) -> list[list[str]]:
+def cut_info(img: NDArray[np.uint8]) -> list[list[str]]:
     lines = 25
-    x_begin = 20
-    y_begin = 286
-    cell_width = (250 - 20) / 6
-    cell_height = (1313 - 286) / lines
-    infos: list[list[np.ndarray]] = [[] for _ in range(lines)]
+    x_begin = 12
+    y_begin = 268
+    x_end = 246
+    y_end = 1312
+    cell_width = (x_end - x_begin) / 6
+    cell_height = (y_end - y_begin) / lines
+    infos: list[list[NDArray[np.uint8]]] = [[] for _ in range(lines)]
 
     paths: list[list[str]] = [[] for _ in range(lines)]
     for i in range(lines):
@@ -119,64 +132,105 @@ def cut_info(img) -> list[list[str]]:
 
     return paths
 
-def preview_square(img):
+# argumento variadico que pode ser string ou NDArray
+def print_preview(*args: str | NDArray[np.uint8]):
+    for elem in args:
+        if isinstance(elem, str):
+            print(f"{elem}", end="")
+        else:
+            img = elem
+            temp_view = cv2.resize(img, (preview_size, preview_size), interpolation=cv2.INTER_AREA)
+            print_raw_img(temp_view, "")
 
-    temp_view = cv2.resize(img, (PREVIEW_SIZE, PREVIEW_SIZE), interpolation=cv2.INTER_AREA)
-    print_raw_img(temp_view, "")
 
-def auto_cut_borders(img):
-    # encontrar pixels não-zero (parte do dígito)
-    ys, xs = np.where(img > 0)
-
-    # bounding box mínimo
-    y1, y2 = ys.min(), ys.max()
-    x1, x2 = xs.min(), xs.max()
-
-    digit = img[y1:y2+1, x1:x2+1]
-    return digit
-
-def cut_borders(img, pixels: int):
+def cut_borders(img: NDArray[np.uint8], pixels: int) -> NDArray[np.uint8]:
     h, w = img.shape
     return img[pixels:h-pixels, pixels:w-pixels]
 
-def predict_digit(img_path, model):
+# recebe uma imagem binarizada (preto e branco) e identifica as bordas com conteúdo
+# enquanto pelo menos 70% dos pixels na linha/coluna forem brancos, considera como borda
+def identify_borders(img: NDArray[np.uint8]) -> tuple[int, int, int, int]:
+    h, w = img.shape
+    top, bottom, left, right = 0, h - 1, 0, w - 1
+    # print("topo")   
+    # identificar topo
+    for i in range(h):
+        line = img[i, :]
+        white_pixels = np.sum(line == 255)
+        # print(white_pixels / w)
+        if white_pixels / w < border_fill_limit:
+            top = i
+            break
+    # print("top", top)
+    # identificar bottom
+    # print("bottom")
+    for i in range(h - 1, -1, -1):
+        line = img[i, :]
+        white_pixels = np.sum(line == 255)
+        # print(white_pixels / w)
+        if white_pixels / w < border_fill_limit:
+            bottom = i
+            break
+    # identificar left
+    # print("bottom", bottom)
+    # print("left")
+    for j in range(w):
+        column = img[:, j]
+        white_pixels = np.sum(column == 255)
+        # print(white_pixels / h)
+        if white_pixels / h < border_fill_limit:
+            left = j
+            break
+    # identificar right
+    # print("left", left)
+    # print("right")
+    for j in range(w - 1, -1, -1):
+        column = img[:, j]
+        white_pixels = np.sum(column == 255)
+        # print(white_pixels / h)
+        if white_pixels / h < border_fill_limit:
+            right = j
+            break
+    # print("right", right)
+    return top, bottom, left, right
+
+def cut_borders_dynamic(img: NDArray[np.uint8]) -> NDArray[np.uint8]:
+    top, bottom, left, right = identify_borders(img)
+    return img[top:bottom+1, left:right+1]
+
+def predict_digit(img_path: str, model: cv2.ml_KNearest) -> int:
     img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-    print("orig:", end="")
-    preview_square(img)
+    print_preview("orig:", img)
 
-    print(", border:", end="")
-    img = cut_borders(img, 4)
-    preview_square(img)
-
+    img = cut_borders(img, border_cut)
     # img = cv2.equalizeHist(img)
     # img = cv2.GaussianBlur(img, (5, 5), 0)
 
     # binarização otsu (scanner de documentos)
-    #_, img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-
-    # img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
-
+    _, img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
     # binarização adaptativa (fotos com iluminação irregular)
-    img = cv2.adaptiveThreshold( img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 31, 10 )
-    print(", bin:", end="")
-    preview_square(img)
-    
+    # img = cv2.adaptiveThreshold( img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 31, 10 ) # type: ignore
+    print_preview("bin:", img)
+
+    # img = cut_borders(img, border_cut)
+    img = cut_borders_dynamic(img)
+    print_preview("border:", img)
+
     # erodir para remover ruídos
-    print(" ,erode:", end="")
-    kernel = np.ones((2,2), np.uint8)
-    img = cv2.erode(img, kernel, iterations=1)
-    preview_square(img)
+    # print(" ,erode:", end="")
+    # kernel = np.ones((2,2), np.uint8)
+    # img = cv2.erode(img, kernel, iterations=1)
+    # preview_square(img)
 
     # dilatar para reforçar traços
-    print(", dilate:", end="")
     kernel = np.ones((2,2), np.uint8)
     img = cv2.dilate(img, kernel, iterations=1)
-    preview_square(img)
+    print_preview("dilate:", img)
     
     img = cv2.resize(img, (20, 20), interpolation=cv2.INTER_AREA)
     sample = img.reshape(1, 400).astype(np.float32)
 
-    ret, result, neighbours, dist = model.findNearest(sample, k=3)
+    ret, result, neighbours, dist = model.findNearest(sample, k=3) # type: ignore
     return int(result[0][0])
 
 
@@ -189,13 +243,13 @@ if __name__ == "__main__":
     parser.add_argument("--preview", '-p', type=int, default=30, help="Tamanho do preview das células.")
     args = parser.parse_args()
 
-    PREVIEW_SIZE = args.preview
+    preview_size = args.preview
 
     img = alinhar(args.input, args.align)
-    # img = filtrar(img, args.filter)
+    filtrar(img, args.filter)
     paths = cut_info(img)
 
-    model = cv2.ml.KNearest_load(model_path)
+    model = cv2.ml.KNearest_load(model_path) # type: ignore
     for i, row in enumerate(paths):
         if args.qtd > 0 and i >= args.qtd:
             break
