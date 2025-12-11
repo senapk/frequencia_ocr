@@ -29,6 +29,8 @@ python process.py --qtd 10 --preview 40
 - [x] Corrigir o alinhamento se foto torta ou paisagem
 - [x] Cortar as imagens das entradas individuais (20 matriculas e 20 nomes)
 - [x] Detecção e eliminação de bordas
+- [ ] Criar base de treinamento e avaliação com letras independentes
+- [ ] Montar modelo com rótulo, data, hora intergrados no texto
 - [ ] Testar o reconhecimento com diferentes tipos de filtros
 - [ ] Fazer o código de busca e verificação dos match matrícula nome por proximidade
 - [ ] Guardar as imagens dos dados não reconhecidos para revisão manual

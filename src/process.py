@@ -24,9 +24,9 @@ def print_image(image_path: str, end: str="\n"):
     print(f"\033_Ga=T,f=100;{data}\033\\", end=end)
 
 def print_raw_img(img: NDArray[np.uint8], end: str="\n"):
-    temp_jpg_file = tempfile.gettempdir() + "/temp_cell.jpg"
-    cv2.imwrite(temp_jpg_file, img)
-    print_image(temp_jpg_file, end=end)
+    temp_png_file = tempfile.gettempdir() + "/temp_cell.png"
+    cv2.imwrite(temp_png_file, img)
+    print_image(temp_png_file, end=end)
 
 def green(text: str) -> str:
     return f"\033[92m{text}\033[0m"
@@ -116,8 +116,8 @@ def cut_info(img: NDArray[np.uint8]) -> list[list[str]]:
         x2line = int(x_begin + 6 * cell_width)
         y2line = int(y_begin + (i + 1) * cell_height)
         line_img = img[y1line:y2line, x1line:x2line]
-        cv2.imwrite(f"{cells_folder}/line_{i}.jpg", line_img)
-        # print_image_in_terminal(f"{cells_folder}/line_{i}.jpg")
+        cv2.imwrite(f"{cells_folder}/line_{i}.png", line_img)
+        # print_image_in_terminal(f"{cells_folder}/line_{i}.png")
         for j in range(6):
             x1 = int(x_begin + j * cell_width)
             y1 = int(y_begin + i * cell_height)
@@ -125,9 +125,9 @@ def cut_info(img: NDArray[np.uint8]) -> list[list[str]]:
             y2 = int(y_begin + (i + 1) * cell_height)
             cell = img[y1:y2, x1:x2]
             row.append(cell)
-            cv2.imwrite(f"{cells_folder}/cell_row{i}_{j}.jpg", cell)
-            paths[i].append(f"{cells_folder}/cell_row{i}_{j}.jpg")
-            #subprocess.run(f"printf \"\033_Ga=T,f=100;%s\033\\\n\" \"$(base64 -w0 {cells_folder}/cell_row{i}_{j}.jpg)\"", shell=True)
+            cv2.imwrite(f"{cells_folder}/cell_row{i}_{j}.png", cell)
+            paths[i].append(f"{cells_folder}/cell_row{i}_{j}.png")
+            #subprocess.run(f"printf \"\033_Ga=T,f=100;%s\033\\\n\" \"$(base64 -w0 {cells_folder}/cell_row{i}_{j}.png)\"", shell=True)
         infos[i] = row
 
     return paths
@@ -236,9 +236,9 @@ def predict_digit(img_path: str, model: cv2.ml_KNearest) -> int:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Alinhar imagem usando marcadores ArUco.")
-    parser.add_argument("--input", '-i', default="folha-00.png", help="Caminho para a imagem de entrada.")
-    parser.add_argument("--align", '-a', default="alinhada.jpg", help="Caminho para salvar a imagem alinhada.")
-    parser.add_argument("--filter", '-f', default="filtrada.jpg", help="Caminho para salvar a imagem filtrada.")
+    parser.add_argument("--input", '-i', default="folhas/folha-00.png", help="Caminho para a imagem de entrada.")
+    parser.add_argument("--align", '-a', default="folhas/alinhada.png", help="Caminho para salvar a imagem alinhada.")
+    parser.add_argument("--filter", '-f', default="folhas/filtrada.png", help="Caminho para salvar a imagem filtrada.")
     parser.add_argument("--qtd", type=int, default=0, help="Quantidade de linhas a processar (0 = todas).")
     parser.add_argument("--preview", '-p', type=int, default=30, help="Tamanho do preview das células.")
     args = parser.parse_args()
