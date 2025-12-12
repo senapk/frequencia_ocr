@@ -1,3 +1,4 @@
+from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 from image import Image
@@ -5,12 +6,21 @@ from typing import Callable
 
 
 class Border:
-    def __init__(self, border_fill_limit: float = 0.2):
-        self.border_fill_limit = border_fill_limit
+    DEFAULT_BORDER_FILL_LIMIT = 0.2
+    def __init__(self, image: Image):
+        self.image: Image = image
+        self.border_fill_limit = Border.DEFAULT_BORDER_FILL_LIMIT
+
+    def get_image(self) -> Image:
+        return self.image
+
+    def set_border_fill_limit(self, limit: float) -> Border:
+        self.border_fill_limit = limit
+        return self
 
     # recebe uma imagem binarizada (preto e branco) e identifica as bordas com conteúdo
     # enquanto pelo menos 70% dos pixels na linha/coluna forem brancos, considera como borda
-    def identify_borders(self, image: Image, fn_continue: Callable[[NDArray[np.uint8]], bool]) -> tuple[int, int, int, int]:
+    def __identify_borders(self, image: Image, fn_continue: Callable[[NDArray[np.uint8]], bool]) -> tuple[int, int, int, int]:
         def fn(x: NDArray[np.uint8]) -> bool:
             return not fn_continue(x)
         
@@ -45,31 +55,33 @@ class Border:
         return top, bottom, left, right
 
     # retorna a imagem cortada nas bordas onde ainda há conteúdo visível
-    def dynamic_cutter_while_visible_border(self, img: Image) -> Image:
+    def dynamic_cutter_while_visible_border(self) -> Border:
         def fn(x: NDArray[np.uint8]) -> bool:
             qtd = np.sum(x == 255)
             amount = qtd / x.size
             return  amount >= self.border_fill_limit
         
-        top, bottom, left, right = self.identify_borders(img, fn)
-        return Image(img).set_data(img.data[top:bottom+1, left:right+1])
+        top, bottom, left, right = self.__identify_borders(self.image, fn)
+        self.image = Image(self.image).set_data(self.image.data[top:bottom+1, left:right+1])
+        return self
     
     # retorna a imagem cortada na bounding box do conteúdo
-    def dynamic_bounding_box(self, img: Image) -> Image:
+    def dynamic_bounding_box(self) -> Border:
         def fn(x: NDArray[np.uint8]) -> bool:
             qtd = np.sum(x == 0)
             return  qtd == x.size
         
-        top, bottom, left, right = self.identify_borders(img, fn)
-        return Image(img).set_data(img.data[top:bottom+1, left:right+1])
+        top, bottom, left, right = self.__identify_borders(self.image, fn)
+        self.image = Image(self.image).set_data(self.image.data[top:bottom+1, left:right+1])
+        return self
     
     # centraliza e faz o padding da imagem para ficar quadrada
     # e com fundo preto
-    def centralize_and_pad(self, img: Image, extra_pixels: int = 2) -> Image:
-        h, w = img.data.shape
+    def centralize_and_pad(self, extra_pixels: int = 2) -> Border:
+        h, w = self.image.data.shape
         size = max(h, w) + 2 * extra_pixels
 
-        if img.inversed:
+        if self.image.inversed:
             background = 0
         else:
             background = 255
@@ -80,7 +92,7 @@ class Border:
         y_offset = (size - h) // 2
         x_offset = (size - w) // 2
 
-        padded[y_offset:y_offset + h, x_offset:x_offset + w] = img.data
+        padded[y_offset:y_offset + h, x_offset:x_offset + w] = self.image.data
 
-        return Image(img).set_data(padded)
-        
+        self.image = Image(self.image).set_data(padded)
+        return self

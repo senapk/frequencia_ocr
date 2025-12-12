@@ -4,7 +4,8 @@ import numpy as np
 import os
 from numpy.typing import NDArray
 import base64
-
+import argparse
+import hashlib
 
 class Image:
     NONE_MARKER = "?"
@@ -23,19 +24,20 @@ class Image:
             self.inversed = other.inversed
 
     def hash(self) -> str:
-        value = abs(hash(self.data.tobytes()))
-        choices = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTWXYZ0123456789"
-        size = len(choices)
-        response: str = ""
-        while value > 0:
-            left = value % size
-            response = choices[left] + response
-            value = value // size
-        return response
+        h = hashlib.sha256()
+        h.update(self.data.tobytes())
+        return h.hexdigest()[:16]
     
     def set_data(self, data: NDArray[np.uint8]) -> Image:
         self.data = data
         return self
+    
+    # percentage of white pixels
+    def written(self) -> float:
+        ref_value = 255 if self.inversed else 0
+        total_pixels = self.data.size
+        white_pixels = np.sum(self.data == ref_value)
+        return white_pixels / total_pixels
     
     def set_info(self, info: str) -> Image:
         self.info = info
@@ -58,7 +60,7 @@ class Image:
     # if path has the format hash__v.ext, load v into info
     # if path has the format hash__?.ext, or any other format, load None to info
     def load_from_file(self, path: str) -> Image:
-        self.data = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+        self.data = cv2.imread(path)
         return self
     
     # save to cache folder using hash and value
@@ -76,7 +78,12 @@ class Image:
         return None
     
     def binarize(self) -> Image:
-        _, binary = cv2.threshold(self.data, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        # se estiver em RGB/BGR, converter para escala de cinza primeiro
+        img = self.data
+        if self.data.ndim != 2:  # RGB/BGR/RGBA
+            img = cv2.cvtColor(self.data, cv2.COLOR_BGR2GRAY)
+        img = cv2.GaussianBlur(img, (3,3), 0)
+        _, binary = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         return Image(self).set_data(binary).set_binary(True)
     
     def inversion(self) -> Image:
@@ -84,6 +91,15 @@ class Image:
         return Image(self).set_data(inverted).set_inversed(not self.inversed)
     
     
+    def is_empty(self) -> bool:
+        h = self.data.shape[0]
+        w = self.data.shape[1]
+        if h < 5 or w < 5:
+            return True
+        if self.written() < 0.02:
+            return True
+        return False
+
     def resize(self, dx: int, dy: int) -> Image:
         return Image(self).set_data(cv2.resize(self.data, (dx, dy), interpolation=cv2.INTER_AREA))
 
@@ -94,7 +110,8 @@ class Image:
     def __str__(self) -> str:
         data = self.data
         if self.preview_zoom is not None:
-            w, h = data.shape
+            h = data.shape[0]
+            w = data.shape[1]
             w = int(w * self.preview_zoom)
             h = int(h * self.preview_zoom)
             data = cv2.resize(data, (h, w), interpolation=cv2.INTER_AREA)
@@ -105,13 +122,11 @@ class Image:
         return text
     
 if __name__ == "__main__":
-    cell = Image().load_from_file("example.png")
-    print(f"A imagem é : {cell}, o hash é {cell.hash()}")
-    cell.info = "5"
-    cache_folder = "cache_folder"
-    if not os.path.exists(cache_folder):
-        os.makedirs(cache_folder)
-    cell.save_to_folder(cache_folder)
-
-    cell2 = Image().load_from_file(os.path.join(cache_folder, cell.hash() + ".png"))
-    print(f"A imagem é : {cell2}, o hash é {cell2.hash()}, info = {cell2.info}")
+    parser = argparse.ArgumentParser(description="Image Test")
+    parser.add_argument("image", type=str, help="Path to the image file")
+    args = parser.parse_args()
+    Image.preview_zoom = 2
+    img = Image().load_from_file(args.image)
+    print(img)
+    img = img.binarize()
+    print(img)

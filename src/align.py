@@ -15,8 +15,8 @@ class Align:
     # 1 - Topo Direito
     # 2 - Baixo Esquerdo
     # 3 - Baixo Direito
-    def aruco(self, input_path: str, output_path: str) -> NDArray[np.uint8]:
-        img = cv2.imread(input_path)
+    def aruco(self, img_data: NDArray[np.uint8]) -> NDArray[np.uint8]:
+        
 
         # Configurar ArUco
         aruco = cv2.aruco
@@ -25,7 +25,7 @@ class Align:
         detector = aruco.ArucoDetector(dict_, params) # type: ignore
 
         # Detectar marcadores
-        corners, ids, _ = detector.detectMarkers(img) # type: ignore
+        corners, ids, _ = detector.detectMarkers(img_data) # type: ignore
 
         if ids is None or len(ids) < 4:
             raise Exception("Nem todos os 4 ArUcos foram detectados.")
@@ -54,8 +54,5 @@ class Align:
 
         # Matriz de transformação e warp
         M = cv2.getPerspectiveTransform(pts, dst) # type: ignore
-        corrigida = cv2.warpPerspective(img, M, (W, H)) # type: ignore
-
-        cv2.imwrite(output_path, corrigida)
-        print("Imagem alinhada salva em", Color.green(output_path))
+        corrigida: NDArray[np.uint8] = cv2.warpPerspective(img_data, M, (W, H)) # type: ignore
         return corrigida

@@ -19,22 +19,25 @@ class OCR:
         return self
         
     def prepare_sample(self, img: Image) -> tuple[NDArray[np.float32], Image]:
-        border = Border()
-        img = border.dynamic_cutter_while_visible_border(img)
-        if self.debug:
-            print("Borda cortada:", img)
-        img = border.dynamic_bounding_box(img)
-        if self.debug:
-            print("Bounding box aplicado:", img)
-        img = border.centralize_and_pad(img)
-        if self.debug:
-            print("Centralizando e adicionando padding:", img)
         img = img.resize(20, 20)
         sample: NDArray[np.float32] = img.get_sample(400)
         return sample, img
 
-    def predict_digit_from_image(self, img: Image) -> tuple[int, Image]:
-        sample, img = self.prepare_sample(img)
+    def predict_from_raw_image(self, img: Image) -> tuple[int, Image]:
+        border = Border(img)
+        border.dynamic_cutter_while_visible_border()
+        if self.debug:
+            print("Borda cortada:", border.get_image())
+        border.dynamic_bounding_box()
+        if self.debug:
+            print("Bounding box aplicado:", border.get_image())
+        border.centralize_and_pad()
+        if self.debug:
+            print("Centralizando e adicionando padding:", border.get_image())
+        return self.predict_from_bordered_image(border)
+
+    def predict_from_bordered_image(self, border: Border) -> tuple[int, Image]:
+        sample, img = self.prepare_sample(border.get_image())
         _, result, neighbours, dist = self.model.findNearest(sample, k=3)
         # normalizando distâncias
         dist = dist / 1000.0
@@ -42,16 +45,16 @@ class OCR:
             print("Predicted:", result[0][0], " Neighbours:", neighbours, " Distances:", dist)
         return int(result[0][0]), img
 
-    def predict_digit_from_path(self, path: str) -> tuple[int, Image]:
+    def predict_from_raw_path(self, path: str) -> tuple[int, Image]:
         img = Image().load_from_file(path).binarize().inversion().cut_borders(2)
-        return self.predict_digit_from_image(img)
+        return self.predict_from_raw_image(img)
 def main():
     parser = argparse.ArgumentParser(description="OCR Digits")
     parser.add_argument("image", type=str, help="Path to the image file")
     args = parser.parse_args()
     Image.preview_zoom = 2
     ocr = OCR()
-    digit, img = ocr.predict_digit_from_path(args.image)
+    digit, img = ocr.predict_from_raw_path(args.image)
     print(img)
     print(f"The recognized digit from {args.image} is: {digit}")
 

@@ -10,7 +10,7 @@ class CacheDb:
         if not os.path.exists(self.cache_folder):
             os.makedirs(self.cache_folder)
         self.cache: dict[str, str] = self.__load_json_file()
-        self.load_folder()
+        self.load()
         self.individual_save = True
 
     def __load_json_file(self) -> dict[str, str]:
@@ -21,17 +21,18 @@ class CacheDb:
             data = json.load(f)
         return data
     
-    def update_json_file(self):
+    def update(self):
         path = os.path.join(self.cache_folder, CacheDb.values_dict_filename)
         with open(path, "w") as f:
             json.dump(self.cache, f)
 
-    def load_folder(self):
+    def load(self) -> CacheDb:
         files = os.listdir(self.cache_folder)
         paths = [f[:-4] for f in files if f.endswith(".png")]
         for p in paths:
             if not p in self.cache:
                 self.cache[p] = ""
+        return self
     
     # saving to cache folder, replacing older values or storing info
     # if the old value has info, it is kept
@@ -43,4 +44,4 @@ class CacheDb:
         if cell.info is not None:
             self.cache[hash_value] = cell.info
             if self.individual_save:
-                self.update_json_file()
+                self.update()
