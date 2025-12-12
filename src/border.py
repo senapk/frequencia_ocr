@@ -1,6 +1,7 @@
 import numpy as np
 from numpy.typing import NDArray
 from image import Image
+from typing import Callable
 
 
 class Border:
@@ -9,7 +10,10 @@ class Border:
 
     # recebe uma imagem binarizada (preto e branco) e identifica as bordas com conteúdo
     # enquanto pelo menos 70% dos pixels na linha/coluna forem brancos, considera como borda
-    def identify_borders(self, image: Image) -> tuple[int, int, int, int]:
+    def identify_borders(self, image: Image, fn_continue: Callable[[NDArray[np.uint8]], bool]) -> tuple[int, int, int, int]:
+        def fn(x: NDArray[np.uint8]) -> bool:
+            return not fn_continue(x)
+        
         img = image.data
         if not image.binary:
             raise ValueError("Image must be binary (black and white) to identify borders")
@@ -17,49 +21,66 @@ class Border:
             raise ValueError("Image must be inversed (white background, black content) to identify borders")
         h, w = img.shape
         top, bottom, left, right = 0, h - 1, 0, w - 1
-        # print("topo")   
         # identificar topo
         for i in range(h):
             line = img[i, :]
-            white_pixels = np.sum(line == 255)
-            # print(white_pixels / w)
-            if white_pixels / w < self.border_fill_limit:
+            if fn(line):
                 top = i
                 break
-        # print("top", top)
-        # identificar bottom
-        # print("bottom")
         for i in range(h - 1, -1, -1):
             line = img[i, :]
-            white_pixels = np.sum(line == 255)
-            # print(white_pixels / w)
-            if white_pixels / w < self.border_fill_limit:
+            if fn(line):
                 bottom = i
                 break
-        # identificar left
-        # print("bottom", bottom)
-        # print("left")
         for j in range(w):
             column = img[:, j]
-            white_pixels = np.sum(column == 255)
-            # print(white_pixels / h)
-            if white_pixels / h < self.border_fill_limit:
+            if fn(column):
                 left = j
                 break
-        # identificar right
-        # print("left", left)
-        # print("right")
         for j in range(w - 1, -1, -1):
             column = img[:, j]
-            white_pixels = np.sum(column == 255)
-            # print(white_pixels / h)
-            if white_pixels / h < self.border_fill_limit:
+            if fn(column):
                 right = j
                 break
-        # print("right", right)
         return top, bottom, left, right
 
-    def dynamic_cutter(self, img: Image) -> Image:
-        top, bottom, left, right = self.identify_borders(img)
-        return Image().set_data(img.data[top:bottom+1, left:right+1])
+    # retorna a imagem cortada nas bordas onde ainda há conteúdo visível
+    def dynamic_cutter_while_visible_border(self, img: Image) -> Image:
+        def fn(x: NDArray[np.uint8]) -> bool:
+            qtd = np.sum(x == 255)
+            amount = qtd / x.size
+            return  amount >= self.border_fill_limit
+        
+        top, bottom, left, right = self.identify_borders(img, fn)
+        return Image(img).set_data(img.data[top:bottom+1, left:right+1])
     
+    # retorna a imagem cortada na bounding box do conteúdo
+    def dynamic_bounding_box(self, img: Image) -> Image:
+        def fn(x: NDArray[np.uint8]) -> bool:
+            qtd = np.sum(x == 0)
+            return  qtd == x.size
+        
+        top, bottom, left, right = self.identify_borders(img, fn)
+        return Image(img).set_data(img.data[top:bottom+1, left:right+1])
+    
+    # centraliza e faz o padding da imagem para ficar quadrada
+    # e com fundo preto
+    def centralize_and_pad(self, img: Image, extra_pixels: int = 2) -> Image:
+        h, w = img.data.shape
+        size = max(h, w) + 2 * extra_pixels
+
+        if img.inversed:
+            background = 0
+        else:
+            background = 255
+
+        # cria canvas quadrado com a cor desejada
+        padded = np.ones((size, size), dtype=np.uint8) * background
+
+        y_offset = (size - h) // 2
+        x_offset = (size - w) // 2
+
+        padded[y_offset:y_offset + h, x_offset:x_offset + w] = img.data
+
+        return Image(img).set_data(padded)
+        
