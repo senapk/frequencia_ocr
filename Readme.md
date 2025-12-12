@@ -8,13 +8,24 @@ pip install opencv-python numpy opencv-stubs
 
 ```
 
+## Componentes
+
+- align.py: Alinha a imagem usando marcadores ArUco.
+- border.py: corta bordas e centraliza as imagens das células.
+- cache_db.py: Gerencia o cache de imagens processadas.
+- color.py: Cores para saída no terminal.
+- image.py: Classe para manipulação de imagens.
+- process.py: Script principal para processar a imagem e extrair as células.
+- ocr.py: Implementa o OCR (reconhecimento óptico de caracteres).
+- create_ocr_model.py: cria o modelo de OCR usando o dataset do github.
+
 ## Uso
 
 ```bash
 # qtd para quantos elementos mostrar
 # preview para o tamanho do preview das células (padrão 30)
 # quanto maior a letra do terminal, maior pode ficar o preview, se ficar grande demais, vai quebrar a linha estranho
-python process.py --qtd 10 --preview 40
+python process.py
 ```
 
 ## Qual termina usar?

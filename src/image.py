@@ -33,7 +33,7 @@ class Image:
         return self
     
     # percentage of white pixels
-    def written(self) -> float:
+    def written_ratio(self) -> float:
         ref_value = 255 if self.inversed else 0
         total_pixels = self.data.size
         white_pixels = np.sum(self.data == ref_value)
@@ -70,19 +70,20 @@ class Image:
 
     # return a new Cell with borders cut
     def cut_borders(self, pixels_count: int) -> Image:
-        h, w = self.data.shape
+        h, w = self.get_dim()
         return Image(self).set_data(self.data[pixels_count:h-pixels_count, pixels_count:w-pixels_count])
 
     def save_to_file(self, file_path: str) -> None:
         cv2.imwrite(file_path, self.data)
         return None
     
-    def binarize(self) -> Image:
+    def binarize(self, gaussian: bool = True) -> Image:
         # se estiver em RGB/BGR, converter para escala de cinza primeiro
         img = self.data
         if self.data.ndim != 2:  # RGB/BGR/RGBA
             img = cv2.cvtColor(self.data, cv2.COLOR_BGR2GRAY)
-        img = cv2.GaussianBlur(img, (3,3), 0)
+        if gaussian:
+            img = cv2.GaussianBlur(img, (3,3), 0)
         _, binary = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         return Image(self).set_data(binary).set_binary(True)
     
@@ -91,12 +92,15 @@ class Image:
         return Image(self).set_data(inverted).set_inversed(not self.inversed)
     
     
+    def get_dim(self) -> tuple[int, int]:
+        return (self.data.shape[0], self.data.shape[1])
+
+    # empty if dimensions are too small or written ratio < 2%
     def is_empty(self) -> bool:
-        h = self.data.shape[0]
-        w = self.data.shape[1]
+        h, w = self.get_dim()
         if h < 5 or w < 5:
             return True
-        if self.written() < 0.02:
+        if self.written_ratio() < 0.02:
             return True
         return False
 
@@ -110,8 +114,7 @@ class Image:
     def __str__(self) -> str:
         data = self.data
         if self.preview_zoom is not None:
-            h = data.shape[0]
-            w = data.shape[1]
+            h, w = self.get_dim()
             w = int(w * self.preview_zoom)
             h = int(h * self.preview_zoom)
             data = cv2.resize(data, (h, w), interpolation=cv2.INTER_AREA)
