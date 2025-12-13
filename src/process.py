@@ -6,14 +6,14 @@ from image import Image
 from align import Align
 from filtering import Filtering
 from border import Border
-from color import Color
 from ocr import OCR
 from cache_db import CacheDb
 from sheet_cutter import SheetCutter
 import shutil
 import os
 import hashlib
-
+from region import Region, Decomposer
+from filter_abc import ImageFilter
 
 HEIGHT = 1400
 WIDTH = 1000
@@ -37,27 +37,24 @@ def main():
 
     aligner = Align(WIDTH, HEIGHT)
     image = Image().load_from_file(args.input)
-    # print("Imagem de entrada:", image_input)
-    print("Hash da imagem de entrada:", image.hash())
+
 
     align_data = aligner.aruco(image.data)
     image_aligned = Image().set_data(align_data)
     image_aligned.save_to_file(args.align)
-    print("Imagem alinhada salva em", Color.green(args.align))
-    print("Hash da imagem alinhada:", image_aligned.hash())
 
     # filtering = Filtering()
     # img = filtering.otsu(img, args.filter)
-    
+
     sheet_cutter = SheetCutter(cells_folder)
     model = SheetCutter.Model.M1 if args.sheet_model == 1 else SheetCutter.Model.M2
     images, _ = sheet_cutter.cut_info(align_data, model)
 
     raw_cache_db = CacheDb(raw_cache_db_folder).load()
-    bordered_cache_db = CacheDb(bordered_cache_db_folder).load()
-    ocr_digit = OCR().set_debug(False)
+    # bordered_cache_db = CacheDb(bordered_cache_db_folder).load()
+    # ocr_digit = OCR().set_debug(False)
 
-    
+    Image.preview_zoom = 2
     for i, row in enumerate(images):
         if args.qtd > 0 and i >= args.qtd:
             break
@@ -65,15 +62,21 @@ def main():
             raw_cache_db.store_image(image_origin)
             # print(image)
             image = image_origin.binarize(gaussian=False).inversion().cut_borders(2)
-            bordered_before_paddding = Border(image).dynamic_cutter_while_visible_border().dynamic_bounding_box()
-            write_ratio = bordered_before_paddding.get_image().written_ratio()
-            if bordered_before_paddding.get_image().is_empty(): # check empty before padding
-                continue
-            bordered_padded = bordered_before_paddding.centralize_and_pad()
-            bordered_cache_db.store_image(bordered_padded.get_image())
-            digit, _ = ocr_digit.predict_from_bordered_image(bordered_padded)
-            h, w = bordered_before_paddding.get_image().get_dim()
-            print(f"{image_origin}{bordered_before_paddding.get_image().resize(40, 40)} {digit}, write ratio: {write_ratio:.0%}, size: {w}x{h}")
+            #bordered_before_paddding: ImageFilter = Border(image).dynamic_cutter_while_visible_border().dynamic_bounding_box()
+            filtered = Decomposer(image)
+            # origin_size = len(filtered.regions)
+            filtered = filtered.erase_small_regions(0.2).erase_regions_outside_bounds()
+            # big_size = len(filtered.regions)
+            print(image_origin, image, filtered.get_image())
+            # if filtered.get_image().is_empty(): # check empty before padding
+            #     continue
+            # bordered_padded = bordered_before_paddding.centralize_and_pad()
+            # bordered_cache_db.store_image(bordered_padded.get_image())
+            # write_ratio = filtered.get_image().written_ratio()
+            # digit, _ = ocr_digit.predict_from_filtered_image(filtered)
+            # h, w = filtered.get_image().get_dim()
+            
+            # print(f"{i} {image_origin}{filtered.get_image()} {digit}")
         # print("")
 
 if __name__ == "__main__":

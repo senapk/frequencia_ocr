@@ -34,6 +34,8 @@ class Image:
     
     # percentage of white pixels
     def written_ratio(self) -> float:
+        if self.data.size == 0:
+            return 0.0
         ref_value = 255 if self.inversed else 0
         total_pixels = self.data.size
         white_pixels = np.sum(self.data == ref_value)
@@ -70,7 +72,7 @@ class Image:
 
     # return a new Cell with borders cut
     def cut_borders(self, pixels_count: int) -> Image:
-        h, w = self.get_dim()
+        h, w = self.get_h_w()
         return Image(self).set_data(self.data[pixels_count:h-pixels_count, pixels_count:w-pixels_count])
 
     def save_to_file(self, file_path: str) -> None:
@@ -92,12 +94,15 @@ class Image:
         return Image(self).set_data(inverted).set_inversed(not self.inversed)
     
     
-    def get_dim(self) -> tuple[int, int]:
-        return (self.data.shape[0], self.data.shape[1])
+    def get_h_w(self) -> tuple[int, int]:
+        try:
+            return (self.data.shape[0], self.data.shape[1])
+        except IndexError as _:
+            return (0, 0)
 
     # empty if dimensions are too small or written ratio < 2%
     def is_empty(self) -> bool:
-        h, w = self.get_dim()
+        h, w = self.get_h_w()
         if h < 5 or w < 5:
             return True
         if self.written_ratio() < 0.02:
@@ -114,7 +119,7 @@ class Image:
     def __str__(self) -> str:
         data = self.data
         if self.preview_zoom is not None:
-            h, w = self.get_dim()
+            h, w = self.get_h_w()
             w = int(w * self.preview_zoom)
             h = int(h * self.preview_zoom)
             data = cv2.resize(data, (h, w), interpolation=cv2.INTER_AREA)

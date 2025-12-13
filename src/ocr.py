@@ -5,6 +5,7 @@ import argparse
 from numpy.typing import NDArray
 from image import Image
 from border import Border
+from filter_abc import ImageFilter
 
 
 class OCR:
@@ -34,10 +35,10 @@ class OCR:
         border.centralize_and_pad()
         if self.debug:
             print("Centralizando e adicionando padding:", border.get_image())
-        return self.predict_from_bordered_image(border)
+        return self.predict_from_filtered_image(border)
 
-    def predict_from_bordered_image(self, border: Border) -> tuple[int, Image]:
-        sample, img = self.prepare_sample(border.get_image())
+    def predict_from_filtered_image(self, img_filter: ImageFilter) -> tuple[int, Image]:
+        sample, img = self.prepare_sample(img_filter.get_image())
         _, result, neighbours, dist = self.model.findNearest(sample, k=3)
         # normalizando distâncias
         dist = dist / 1000.0

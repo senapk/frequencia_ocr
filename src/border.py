@@ -3,9 +3,9 @@ import numpy as np
 from numpy.typing import NDArray
 from image import Image
 from typing import Callable
+from filter_abc import ImageFilter
 
-
-class Border:
+class Border(ImageFilter):
     DEFAULT_BORDER_FILL_LIMIT = 0.2
     def __init__(self, image: Image):
         self.image: Image = image
