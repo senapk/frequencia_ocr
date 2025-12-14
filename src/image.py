@@ -110,10 +110,13 @@ class Image:
         return False
 
     def resize(self, dx: int, dy: int) -> Image:
+        h, w = self.get_h_w()
+        if h == dy and w == dx:
+            return self
         return Image(self).set_data(cv2.resize(self.data, (dx, dy), interpolation=cv2.INTER_AREA))
 
     # transform in a array
-    def get_sample(self, points: int = 400) -> NDArray[np.float32]:
+    def get_sample(self, points: int) -> NDArray[np.float32]:
         return self.data.reshape(1, points).astype(np.float32)
 
     def __str__(self) -> str:

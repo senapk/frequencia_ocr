@@ -9,9 +9,15 @@ from filter_abc import ImageFilter
 
 
 class OCR:
-    default_model_path = "raw/digits_knn.xml"
-    def __init__(self, model_path: str = default_model_path):
-        self.model_path = model_path
+    # default_model_path = "raw/digits_knn.xml"
+    models: dict[int, str] = {
+        20: "raw/mnist_knn_20x20.yml",
+        28: "raw/mnist_knn_28x28.yml"
+    }
+    
+    def __init__(self, model_size: int = 20):
+        self.model_path = self.models[model_size]
+        self.size = model_size
         self.model = cv2.ml.KNearest_load(self.model_path) # type: ignore
         self.debug: bool = False
 
@@ -20,8 +26,8 @@ class OCR:
         return self
         
     def prepare_sample(self, img: Image) -> tuple[NDArray[np.float32], Image]:
-        img = img.resize(20, 20)
-        sample: NDArray[np.float32] = img.get_sample(400)
+        img = img.resize(self.size, self.size)
+        sample: NDArray[np.float32] = img.get_sample(self.size * self.size)
         return sample, img
 
     def predict_from_raw_image(self, img: Image) -> tuple[int, Image]:
@@ -32,13 +38,13 @@ class OCR:
         border.dynamic_bounding_box()
         if self.debug:
             print("Bounding box aplicado:", border.get_image())
-        border.centralize_and_pad()
+        border.centralize_and_pad(self.size)
         if self.debug:
             print("Centralizando e adicionando padding:", border.get_image())
         return self.predict_from_filtered_image(border)
 
-    def predict_from_filtered_image(self, img_filter: ImageFilter) -> tuple[int, Image]:
-        sample, img = self.prepare_sample(img_filter.get_image())
+    def predict_from_filtered_image(self, filtered: ImageFilter) -> tuple[int, Image]:
+        sample, img = self.prepare_sample(filtered.get_image())
         _, result, neighbours, dist = self.model.findNearest(sample, k=3)
         # normalizando distâncias
         dist = dist / 1000.0

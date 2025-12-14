@@ -77,9 +77,8 @@ class Border(ImageFilter):
     
     # centraliza e faz o padding da imagem para ficar quadrada
     # e com fundo preto
-    def centralize_and_pad(self, extra_pixels: int = 2) -> Border:
+    def centralize_and_pad(self, size: int) -> Border:
         h, w = self.image.data.shape
-        size = max(h, w) + 2 * extra_pixels
 
         if self.image.inversed:
             background = 0
