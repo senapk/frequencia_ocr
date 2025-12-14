@@ -16,7 +16,7 @@ def extract():
     np.savetxt("raw/samples.data", train)
     np.savetxt("raw/responses.data", responses)
 
-def train():
+def train_20():
     # carregar seus arquivos
     samples = np.loadtxt("raw/samples.data", np.float32)
     responses = np.loadtxt("raw/responses.data", np.float32)
@@ -26,6 +26,6 @@ def train():
     knn.train(samples, cv2.ml.ROW_SAMPLE, responses)
 
     # salvar o modelo para uso posterior
-    knn.save("raw/digits_knn.xml")
+    knn.save("raw/mnist_knn_20x20.xml")
 
-train()
+train_20()

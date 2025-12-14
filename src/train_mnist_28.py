@@ -2,13 +2,11 @@ import numpy as np
 import cv2
 import gzip
 import struct
-import urllib.request
-import os
 
-BASE_URL = "http://yann.lecun.com/exdb/mnist/"
+BASE_URL = "https://github.com/golbin/TensorFlow-MNIST/tree/master/mnist/data/"
 FILES = {
-    "train_images": "train-images-idx3-ubyte.gz",
-    "train_labels": "train-labels-idx1-ubyte.gz",
+    "train_images": "raw/train-images-idx3-ubyte.gz",
+    "train_labels": "raw/train-labels-idx1-ubyte.gz",
 }
 
 # def download(file: str):
@@ -42,5 +40,5 @@ knn = cv2.ml.KNearest_create()
 knn.train(X, cv2.ml.ROW_SAMPLE, y)
 
 # save
-knn.save("mnist_knn_28x28.yml")
-print("Salvo: mnist_knn_28x28.yml")
+knn.save("raw/mnist_knn_28x28.yml")
+print("Salvo: raw/mnist_knn_28x28.yml")
